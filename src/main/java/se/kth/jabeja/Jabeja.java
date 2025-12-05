@@ -26,7 +26,7 @@ public class Jabeja {
     this.nodeIds = new ArrayList(entireGraph.keySet());
     this.round = 0;
     this.numberOfSwaps = 0;
-    this.config = config;
+    this.config = config; // has delta
     this.T = config.getTemperature();
   }
 
@@ -49,11 +49,15 @@ public class Jabeja {
    * Simulated analealing cooling function
    */
   private void saCoolDown(){
-    // TODO for second task
-    if (T > 1)
-      T -= config.getDelta();
-    if (T < 1)
-      T = 1;
+    // T_{k+1} = T_k / (1 + delta * T_k)
+    float delta = config.getDelta();
+    T = T / (1 + delta * T);
+
+    final float MIN_T = 1e-8f;
+    if (T < MIN_T) {
+      T = 0f;
+    }
+
   }
 
   /**
@@ -65,29 +69,68 @@ public class Jabeja {
     Node nodep = entireGraph.get(nodeId);
 
     if (config.getNodeSelectionPolicy() == NodeSelectionPolicy.HYBRID
-            || config.getNodeSelectionPolicy() == NodeSelectionPolicy.LOCAL) {
-      // swap with random neighbors
-      // TODO
+            || config.getNodeSelectionPolicy() == NodeSelectionPolicy.LOCAL)
+    {
+              Integer[] localNeighbors = getNeighbors(nodep);
+              partner = findPartner(nodeId, localNeighbors);
     }
 
     if (config.getNodeSelectionPolicy() == NodeSelectionPolicy.HYBRID
             || config.getNodeSelectionPolicy() == NodeSelectionPolicy.RANDOM) {
       // if local policy fails then randomly sample the entire graph
-      // TODO
+      if (partner == null) 
+        {
+          Integer[] randomSample = getSample(nodeId);
+          partner = findPartner(nodeId, randomSample);
+        }
     }
 
-    // swap the colors
-    // TODO
+    if (partner != null) {
+      int temp = partner.getColor();
+      partner.setColor(nodep.getColor());
+      nodep.setColor(temp);
+      numberOfSwaps++;
+    }
   }
 
   public Node findPartner(int nodeId, Integer[] nodes){
 
-    Node nodep = entireGraph.get(nodeId);
+    Node nodep = entireGraph.get(nodeId); 
 
     Node bestPartner = null;
     double highestBenefit = 0;
 
-    // TODO
+    float alpha = config.getAlpha();
+
+    for (Integer q: nodes) {
+      Node nodeq = entireGraph.get(q);
+      int dpp = getDegree(nodep, nodep.getColor());
+      int dqq = getDegree(nodeq, nodeq.getColor());
+      double oldValue = (Math.pow(dpp, alpha) + Math.pow(dqq, alpha));
+      int dpq = getDegree(nodep, nodeq.getColor());
+      int dqp = getDegree(nodeq, nodep.getColor());
+      double newValue = (Math.pow(dpq, alpha) + Math.pow(dqp, alpha));
+
+      double costDiff = newValue - oldValue;
+      boolean accept = false;
+
+      Random rand = new Random(config.getSeed());
+
+      // If more neighbours of same color in exchange
+      if (costDiff > 0)
+        accept = true;
+      else {
+        double acceptProb = Math.exp(costDiff / T);
+        if (acceptProb > rand.nextDouble()) {
+          accept = true;
+        }
+      }
+
+      if (accept && (newValue > highestBenefit)) {
+        bestPartner = nodeq;
+        highestBenefit = newValue;
+      }
+    }
 
     return bestPartner;
   }

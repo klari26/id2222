@@ -1,0 +1,9 @@
+times:
+
+Base algorithm (Task 1):
+
+add20 and 3elt 8 to 10 seconds
+facebook -17:29:36-17:16:35 ==> 13 minutes
+twitter -  17:33:46- 17:32:17 ==> 1 minute
+
+Task 2 (a)
