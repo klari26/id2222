@@ -57,6 +57,12 @@ public class CLI {
   @Option(name = "-outputDir", usage = "Location of the output file(s)")
   private static String OUTPUT_DIR = "./output";
 
+  @Option(name = "-restartt", usage = "Round to restat T to its initial value.")
+  private static Integer RESTARTT = -1;
+
+  @Option(name = "-aneal", usage = "Use annealing method if 1")
+  private static int ANNEALING = 0;
+
   public Config parseArgs(String[] args) throws FileNotFoundException {
     CmdLineParser parser = new CmdLineParser(this);
     parser.setUsageWidth(80);
@@ -110,6 +116,8 @@ public class CLI {
             .setNodeSelectionPolicy(nodeSelectionPolicy)
             .setGraphInitialColorPolicy(graphInitColorSelectionPolicy)
             .setOutputDir(OUTPUT_DIR)
-            .setAlpha(ALPHA);
+            .setAlpha(ALPHA)
+            .setRestartT(RESTARTT)
+            .setAnnealing(ANNEALING);
   }
 }

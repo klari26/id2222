@@ -18,6 +18,10 @@ public class Jabeja {
   private int numberOfSwaps;
   private int round;
   private float T;
+  private float TOrig;
+  private int restartT;
+  private final float TMin = 0.00001f;
+  private boolean annealing;
   private boolean resultFileCreated = false;
 
   //-------------------------------------------------------------------
@@ -28,37 +32,53 @@ public class Jabeja {
     this.numberOfSwaps = 0;
     this.config = config; // has delta
     this.T = config.getTemperature();
+    this.annealing = config.getAnnealing();
+    if (annealing) {
+      config.setDelta(0.9f);
+      this.TOrig = config.getTemperature();
+      this.restartT = config.getRestartT();
+    }
   }
 
 
   //-------------------------------------------------------------------
   public void startJabeja() throws IOException {
     for (round = 0; round < config.getRounds(); round++) {
-      for (int id : entireGraph.keySet()) {
-        sampleAndSwap(id);
-      }
+        for (int id : entireGraph.keySet()) {
+          sampleAndSwap(id);
+        }
 
-      //one cycle for all nodes have completed.
-      //reduce the temperature
-      saCoolDown();
-      report();
-    }
+        //one cycle for all nodes have completed.
+        //reduce the temperature
+        saCoolDown();
+        report();
+      }
   }
 
   /**
    * Simulated analealing cooling function
    */
-  private void saCoolDown(){
-    // T_{k+1} = T_k / (1 + delta * T_k)
-    float delta = config.getDelta();
-    T = T / (1 + delta * T);
-
-    final float MIN_T = 1e-8f;
-    if (T < MIN_T) {
-      T = 0f;
+  private void saCoolDown() {
+    if (annealing) {
+      T *= config.getDelta();
+      if (T < TMin) {
+        T = TMin;
+      }
+      if (T==TMin && restartT != -1) {
+        if (round % restartT == 0) {
+          T = TOrig;
+        }
+      }
     }
-
-  }
+    else {
+      if (T > 1) {
+        T-=config.getDelta();
+      }
+      if (T < 1) {
+        T=1;
+      }
+    }
+}
 
   /**
    * Sample and swap algorith at node p
@@ -93,47 +113,43 @@ public class Jabeja {
     }
   }
 
-  public Node findPartner(int nodeId, Integer[] nodes){
-
-    Node nodep = entireGraph.get(nodeId); 
-
+public Node findPartner(int nodeId, Integer[] nodes) {
+    Node nodep = entireGraph.get(nodeId);
+    Random rand = new Random();
     Node bestPartner = null;
     double highestBenefit = 0;
 
     float alpha = config.getAlpha();
 
-    for (Integer q: nodes) {
-      Node nodeq = entireGraph.get(q);
-      int dpp = getDegree(nodep, nodep.getColor());
-      int dqq = getDegree(nodeq, nodeq.getColor());
-      double oldValue = (Math.pow(dpp, alpha) + Math.pow(dqq, alpha));
-      int dpq = getDegree(nodep, nodeq.getColor());
-      int dqp = getDegree(nodeq, nodep.getColor());
-      double newValue = (Math.pow(dpq, alpha) + Math.pow(dqp, alpha));
+    for (Integer q : nodes) {
+        Node nodeq = entireGraph.get(q);
 
-      double costDiff = newValue - oldValue;
-      boolean accept = false;
+        int dpp = getDegree(nodep, nodep.getColor());
+        int dqq = getDegree(nodeq, nodeq.getColor());
+        double oldValue = Math.pow(dpp, alpha) + Math.pow(dqq, alpha);
 
-      Random rand = new Random(config.getSeed());
+        int dpq = getDegree(nodep, nodeq.getColor());
+        int dqp = getDegree(nodeq, nodep.getColor());
+        double newValue = Math.pow(dpq, alpha) + Math.pow(dqp, alpha);
 
-      // If more neighbours of same color in exchange
-      if (costDiff > 0)
-        accept = true;
-      else {
-        double acceptProb = Math.exp(costDiff / T);
-        if (acceptProb > rand.nextDouble()) {
-          accept = true;
+        if (annealing) {
+          double p = rand.nextDouble();
+          double acceptProb = Math.exp((newValue-oldValue) / T);
+          if (newValue != oldValue && acceptProb > p && acceptProb > highestBenefit) {
+            bestPartner = nodeq;
+            highestBenefit = acceptProb;
+          }
         }
-      }
+        else {
+          if (newValue * T > oldValue && newValue > highestBenefit) {
+            bestPartner = nodeq;
+            highestBenefit = newValue;
+          }
+        }
 
-      if (accept && (newValue > highestBenefit)) {
-        bestPartner = nodeq;
-        highestBenefit = newValue;
-      }
-    }
-
+        }
     return bestPartner;
-  }
+}
 
   /**
    * The the degreee on the node based on color
@@ -270,6 +286,8 @@ public class Jabeja {
             "RNSS" + "_" + config.getRandomNeighborSampleSize() + "_" +
             "URSS" + "_" + config.getUniformRandomSampleSize() + "_" +
             "A" + "_" + config.getAlpha() + "_" +
+            "RT" + "_" + config.getRestartT() + "_" +
+            "AN" + "_" + config.getAnnealing() + "_" + 
             "R" + "_" + config.getRounds() + ".txt";
 
     if (!resultFileCreated) {
