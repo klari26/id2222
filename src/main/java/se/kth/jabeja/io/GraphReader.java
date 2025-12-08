@@ -54,7 +54,7 @@ public class GraphReader {
       logger.info(graphFilePath + ". Nodes: " + numNodes + ", Edges: " + numEdges);
 
       int id = 0;
-      int partitionSize = numNodes / noOfPartitions;
+      // int partitionSize = numNodes / noOfPartitions;
 
       while ((strLine = br.readLine()) != null) {
 
@@ -131,9 +131,9 @@ public class GraphReader {
       int color = graph.get(i).getColor();
       Integer count = distribution.get(color);
       if (count == null) {
-        count = new Integer(0);
+        count = Integer.valueOf(0);
       }
-      distribution.put(color, new Integer(count + 1));
+      distribution.put(color, Integer.valueOf(count + 1));
     }
 
     StringBuffer sb = new StringBuffer("Color Distribution : ");
