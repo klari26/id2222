@@ -6,7 +6,7 @@ import java.util.Random;
  * Created by salman on 10/24/16.
  */
 public class RandNoGenerator {
-    private static long seed = 0;
+    // private static long seed = 0;
     private static Random rand = null;
 
     private RandNoGenerator(){};
