@@ -3,6 +3,7 @@ package se.kth.jabeja;
 import org.apache.log4j.Logger;
 import se.kth.jabeja.config.Config;
 import se.kth.jabeja.config.NodeSelectionPolicy;
+import se.kth.jabeja.config.AnnealingSelectionPolicy;
 import se.kth.jabeja.io.FileIO;
 import se.kth.jabeja.rand.RandNoGenerator;
 
@@ -27,7 +28,7 @@ public class Jabeja {
   //-------------------------------------------------------------------
   public Jabeja(HashMap<Integer, Node> graph, Config config) {
     this.entireGraph = graph;
-    this.nodeIds = new ArrayList(entireGraph.keySet());
+    this.nodeIds = new ArrayList<Integer>(entireGraph.keySet());
     this.round = 0;
     this.numberOfSwaps = 0;
     this.config = config; // has delta
@@ -134,7 +135,7 @@ public Node findPartner(int nodeId, Integer[] nodes) {
 
         if (annealing) {
           double p = rand.nextDouble();
-          double acceptProb = Math.exp((newValue-oldValue) / T);
+          double acceptProb = calculateAcceptanceProbability(newValue, oldValue, T);
           if (newValue != oldValue && acceptProb > p && acceptProb > highestBenefit) {
             bestPartner = nodeq;
             highestBenefit = acceptProb;
@@ -150,6 +151,58 @@ public Node findPartner(int nodeId, Integer[] nodes) {
         }
     return bestPartner;
 }
+
+  /**
+   * Calculate acceptance probability based on the configured annealing policy
+   * @param newValue new value after potential swap (dpq^α + dqp^α)
+   * @param oldValue old value before swap (dpp^α + dqq^α)
+   * @param temperature current temperature
+   * @return acceptance probability
+   */
+  private double calculateAcceptanceProbability(double newValue, double oldValue, double temperature) {
+    AnnealingSelectionPolicy policy = config.getAnnealingSelectionPolicy();
+    
+    switch (policy) {
+      case LINEAR:
+        // Linear policy: accept if improvement
+        return (newValue > oldValue) ? 1.0 : 0.0;
+        
+      case EXPONENTIAL:
+        // Standard exponential: e^((new - old) / T)
+        return Math.exp((newValue - oldValue) / temperature);
+        
+      case IMPROVED_EXP:
+        // Improved exponential (same as standard for now, can be customized)
+        return Math.exp((newValue - oldValue) / temperature);
+        
+      case ADAPTIVE_RELATIVE:
+        // ADAPTIVE_RELATIVE: e^((new - old) / (old * T))
+        // Safeguards:
+        // 1. Protection against division by very small numbers (threshold: 0.0001)
+        // 2. Exponent capping to prevent overflow (range: [-50, 50])
+        // 3. Fallback to standard exponential when oldValue is too small
+        final double MIN_OLD_VALUE_THRESHOLD = 0.0001;
+        final double MIN_EXPONENT = -50.0;
+        final double MAX_EXPONENT = 50.0;
+        
+        if (oldValue < MIN_OLD_VALUE_THRESHOLD) {
+          // Fallback to standard exponential when oldValue is too small
+          return Math.exp((newValue - oldValue) / temperature);
+        }
+        
+        // Calculate exponent: (new - old) / (old * T)
+        double exponent = (newValue - oldValue) / (oldValue * temperature);
+        
+        // Cap exponent to prevent overflow
+        exponent = Math.max(MIN_EXPONENT, Math.min(MAX_EXPONENT, exponent));
+        
+        return Math.exp(exponent);
+        
+      default:
+        // Default to exponential
+        return Math.exp((newValue - oldValue) / temperature);
+    }
+  }
 
   /**
    * The the degreee on the node based on color
@@ -238,7 +291,6 @@ public Node findPartner(int nodeId, Integer[] nodes) {
   private void report() throws IOException {
     int grayLinks = 0;
     int migrations = 0; // number of nodes that have changed the initial color
-    int size = entireGraph.size();
 
     for (int i : entireGraph.keySet()) {
       Node node = entireGraph.get(i);
