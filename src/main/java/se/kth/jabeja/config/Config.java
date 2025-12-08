@@ -15,6 +15,7 @@ public class Config {
   private Float alpha;
   private Integer restartT;
   private boolean annealing;
+  private AnnealingSelectionPolicy annealingSelectionPolicy;
 
   public Config setAlpha(Float alpha) {
     this.alpha = alpha;
@@ -165,14 +166,10 @@ public class Config {
   }
 
   public Float getAlpha() {
-    if (alpha == null) {
-    }
     return alpha;
   }
 
   public Integer getRestartT() {
-    if (restartT == null) {
-    }
     return restartT;
   }
 
@@ -180,6 +177,17 @@ public class Config {
     return annealing;
   }
 
+  public Config setAnnealingSelectionPolicy(AnnealingSelectionPolicy policy) {
+    this.annealingSelectionPolicy = policy;
+    return this;
+  }
+
+  public AnnealingSelectionPolicy getAnnealingSelectionPolicy() {
+    if (annealingSelectionPolicy == null) {
+      return AnnealingSelectionPolicy.EXPONENTIAL; // default
+    }
+    return annealingSelectionPolicy;
+  }
 
   public Config createJabejaConfig() {
     return new Config();
