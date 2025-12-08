@@ -6,6 +6,7 @@ import org.kohsuke.args4j.Option;
 import se.kth.jabeja.config.Config;
 import se.kth.jabeja.config.GraphInitColorPolicy;
 import se.kth.jabeja.config.NodeSelectionPolicy;
+import se.kth.jabeja.config.AnnealingSelectionPolicy;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -63,9 +64,12 @@ public class CLI {
   @Option(name = "-aneal", usage = "Use annealing method if 1")
   private static int ANNEALING = 0;
 
+  @Option(name = "-annealingPolicy", usage = "Annealing selection policy. Supported: LINEAR, EXPONENTIAL, IMPROVED_EXP, ADAPTIVE_RELATIVE")
+  private String ANNEALING_POLICY = "EXPONENTIAL";
+  private AnnealingSelectionPolicy annealingSelectionPolicy = AnnealingSelectionPolicy.EXPONENTIAL;
+
   public Config parseArgs(String[] args) throws FileNotFoundException {
     CmdLineParser parser = new CmdLineParser(this);
-    parser.setUsageWidth(80);
     try {
       // parse the arguments.
       parser.parseArgument(args);
@@ -87,6 +91,18 @@ public class CLI {
         nodeSelectionPolicy = NodeSelectionPolicy.HYBRID;
       } else {
         throw new IllegalArgumentException("Node selection policy is not supported");
+      }
+
+      if (ANNEALING_POLICY.compareToIgnoreCase(AnnealingSelectionPolicy.LINEAR.toString()) == 0) {
+        annealingSelectionPolicy = AnnealingSelectionPolicy.LINEAR;
+      } else if (ANNEALING_POLICY.compareToIgnoreCase(AnnealingSelectionPolicy.EXPONENTIAL.toString()) == 0) {
+        annealingSelectionPolicy = AnnealingSelectionPolicy.EXPONENTIAL;
+      } else if (ANNEALING_POLICY.compareToIgnoreCase(AnnealingSelectionPolicy.IMPROVED_EXP.toString()) == 0) {
+        annealingSelectionPolicy = AnnealingSelectionPolicy.IMPROVED_EXP;
+      } else if (ANNEALING_POLICY.compareToIgnoreCase(AnnealingSelectionPolicy.ADAPTIVE_RELATIVE.toString()) == 0) {
+        annealingSelectionPolicy = AnnealingSelectionPolicy.ADAPTIVE_RELATIVE;
+      } else {
+        throw new IllegalArgumentException("Annealing selection policy is not supported");
       }
 
     } catch (Exception e) {
@@ -118,6 +134,7 @@ public class CLI {
             .setOutputDir(OUTPUT_DIR)
             .setAlpha(ALPHA)
             .setRestartT(RESTARTT)
-            .setAnnealing(ANNEALING);
+            .setAnnealing(ANNEALING)
+            .setAnnealingSelectionPolicy(annealingSelectionPolicy);
   }
 }
